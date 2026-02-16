@@ -64,6 +64,9 @@ class CsvOutput:
     expected_window_len: int
 
 
+DEFAULT_FLANK_SIZE = 1000
+
+
 def parse_gene_line(line: str) -> GeneRecord | None:
     match = GENE_LINE_RE.match(line)
     if not match:
@@ -114,11 +117,15 @@ def local_to_global(gene: GeneRecord, local_position: int) -> int:
     return gene.global_start + (local_position - gene.local_start)
 
 
-def extract_window(gene: GeneRecord, start_local: int, end_local: int) -> str | None:
+def local_to_sequence_index(gene: GeneRecord, local_position: int, flank_size: int) -> int:
+    return local_position - gene.local_start + flank_size
+
+
+def extract_window(gene: GeneRecord, start_local: int, end_local: int, flank_size: int) -> str | None:
     if start_local > end_local:
         return None
-    start_idx = start_local - gene.local_start
-    end_idx = end_local - gene.local_start
+    start_idx = local_to_sequence_index(gene, start_local, flank_size)
+    end_idx = local_to_sequence_index(gene, end_local, flank_size)
     if start_idx < 0 or end_idx >= len(gene.sequence):
         return None
     return gene.sequence[start_idx : end_idx + 1]
@@ -148,9 +155,14 @@ def write_row(csv_output: CsvOutput, gene: GeneRecord, local_position: int, sequ
     return True
 
 
-def process_gene(gene: GeneRecord, outputs: dict[str, CsvOutput], stats: Stats) -> None:
+def process_gene(
+    gene: GeneRecord,
+    outputs: dict[str, CsvOutput],
+    stats: Stats,
+    flank_size: int,
+) -> None:
     stats.genes_seen += 1
-    expected_len = gene.local_end - gene.local_start + 1
+    expected_len = (gene.local_end - gene.local_start + 1) + (2 * flank_size)
     if expected_len != len(gene.sequence):
         stats.genes_length_mismatch += 1
 
@@ -164,14 +176,14 @@ def process_gene(gene: GeneRecord, outputs: dict[str, CsvOutput], stats: Stats) 
         ordered_exons = sorted(transcript_exons, key=lambda exon: exon[0])
 
         first_exon_start = ordered_exons[0][0]
-        ze_sequence = extract_window(gene, first_exon_start - 500, first_exon_start + 49)
+        ze_sequence = extract_window(gene, first_exon_start - 500, first_exon_start + 49, flank_size)
         if ze_sequence and write_row(outputs["ze"], gene, first_exon_start, ze_sequence):
             stats.transitions_ze_written += 1
         else:
             stats.transitions_ze_skipped += 1
 
         last_exon_end = ordered_exons[-1][1]
-        ez_sequence = extract_window(gene, last_exon_end - 49, last_exon_end + 500)
+        ez_sequence = extract_window(gene, last_exon_end - 49, last_exon_end + 500, flank_size)
         if ez_sequence and write_row(outputs["ez"], gene, last_exon_end, ez_sequence):
             stats.transitions_ez_written += 1
         else:
@@ -180,14 +192,14 @@ def process_gene(gene: GeneRecord, outputs: dict[str, CsvOutput], stats: Stats) 
         for exon_left, exon_right in zip(ordered_exons, ordered_exons[1:]):
             exon_end = exon_left[1]
             intron_start = exon_end + 1
-            ei_sequence = extract_window(gene, intron_start - 5, intron_start + 6)
+            ei_sequence = extract_window(gene, intron_start - 5, intron_start + 6, flank_size)
             if ei_sequence and write_row(outputs["ei"], gene, intron_start, ei_sequence):
                 stats.transitions_ei_written += 1
             else:
                 stats.transitions_ei_skipped += 1
 
             exon_start = exon_right[0]
-            ie_sequence = extract_window(gene, exon_start - 100, exon_start + 4)
+            ie_sequence = extract_window(gene, exon_start - 100, exon_start + 4, flank_size)
             if ie_sequence and write_row(outputs["ie"], gene, exon_start, ie_sequence):
                 stats.transitions_ie_written += 1
             else:
@@ -233,6 +245,15 @@ def parse_args() -> argparse.Namespace:
             "If relative, it is resolved against --input-dir."
         ),
     )
+    parser.add_argument(
+        "--flank-size",
+        type=int,
+        default=DEFAULT_FLANK_SIZE,
+        help=(
+            "Number of context bases available at each side of a gene sequence "
+            f"(default: {DEFAULT_FLANK_SIZE})."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -240,6 +261,7 @@ def run(args: argparse.Namespace) -> int:
     input_dir: Path = args.input_dir
     output_dir: Path = args.output_dir
     input_files = resolve_input_files(input_dir, args.input_file)
+    flank_size: int = args.flank_size
 
     if not input_files:
         print(f"No input files found in: {input_dir}", file=sys.stderr)
@@ -265,7 +287,7 @@ def run(args: argparse.Namespace) -> int:
     try:
         for input_file in input_files:
             for gene in iter_gene_records(input_file):
-                process_gene(gene, outputs, stats)
+                process_gene(gene, outputs, stats, flank_size)
     finally:
         for output in outputs.values():
             output.file_handle.close()

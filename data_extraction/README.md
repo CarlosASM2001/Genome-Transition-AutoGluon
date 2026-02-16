@@ -96,7 +96,8 @@ Optional arguments:
 python3 data_extraction/extract_data.py \
   --input-dir data_ensembl \
   --output-dir data_assembled \
-  --input-file 3-187668812-187670494.txt
+  --input-file 3-187668812-187670494.txt \
+  --flank-size 1000
 ```
 
 _*Example*_
