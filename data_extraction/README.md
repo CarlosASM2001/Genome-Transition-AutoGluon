@@ -79,6 +79,26 @@ Detailed information about data extraction
 * data_ze.csv: Contains the ZE transition sequences.
 * data_ez.csv: Contains the EZ transition sequences.
 
+## Script
+
+You can automate the extraction process with:
+
+```bash
+python3 data_extraction/extract_data.py
+```
+
+By default, the script reads all `*.txt` files in `data_ensembl` and creates
+the four output CSV files in `data_assembled`.
+
+Optional arguments:
+
+```bash
+python3 data_extraction/extract_data.py \
+  --input-dir data_ensembl \
+  --output-dir data_assembled \
+  --input-file 3-187668812-187670494.txt
+```
+
 _*Example*_
 
 | GEN_ID  | Chromosome|Global_Start|Exon_End|B1|B2|.....|Bn|
