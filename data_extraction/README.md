@@ -17,7 +17,7 @@ For each gene in the Ensembl data, the extraction process identifies four types 
 ```
 _**Example**_
 ```
-([ENSG00000278678.1],[600],[895],[....],[21],[10575693],[10577188],false)
+([ENSG00000157005.4],[1000],[2482],[...],[3],[187667913],[187671395],false)
 ```
 
 * Transcription Information Line
