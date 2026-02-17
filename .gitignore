@@ -1,0 +1,22 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.so
+.python-version
+.venv/
+venv/
+env/
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Modeling generated files
+modeling/artifacts/**
+!modeling/artifacts/.gitkeep
+modeling/outputs/**
+!modeling/outputs/.gitkeep
+modeling/data/processed/**
+!modeling/data/processed/.gitkeep
+
+# OS/editor files
+.DS_Store
