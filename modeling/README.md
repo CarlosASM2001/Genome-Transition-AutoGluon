@@ -9,6 +9,10 @@ modeling/
 ├── artifacts/                 # Modelos entrenados (AutoGluon)
 ├── data/
 │   └── processed/             # Dataset unificado para entrenamiento
+├── notebooks/
+│   ├── 01_build_training_dataset.ipynb
+│   ├── 02_train_autogluon.ipynb
+│   └── 03_predict_autogluon.ipynb
 ├── outputs/                   # Métricas, leaderboard, predicciones
 ├── src/
 │   ├── build_training_dataset.py
@@ -22,7 +26,7 @@ modeling/
 Desde la raíz del proyecto:
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -U pip
 pip install -r requirements.txt
@@ -33,7 +37,7 @@ pip install -r requirements.txt
 Unifica los 4 CSV en un solo archivo etiquetado (`transition_label`).
 
 ```bash
-python modeling/src/build_training_dataset.py
+python3 modeling/src/build_training_dataset.py
 ```
 
 Salida por defecto:
@@ -50,7 +54,7 @@ Mapeo por defecto:
 Si quieres usar etiquetas personalizadas:
 
 ```bash
-python modeling/src/build_training_dataset.py \
+python3 modeling/src/build_training_dataset.py \
   --map data_ei.csv=EI \
   --map data_ie.csv=IE \
   --map data_ze.csv=ZE \
@@ -60,7 +64,7 @@ python modeling/src/build_training_dataset.py \
 ## 3) Entrenar modelo con AutoGluon
 
 ```bash
-python modeling/src/train_autogluon.py \
+python3 modeling/src/train_autogluon.py \
   --time-limit 900 \
   --presets medium_quality \
   --eval-metric accuracy
@@ -84,7 +88,7 @@ Salida por defecto:
 Ejemplo sobre el mismo dataset unificado:
 
 ```bash
-python modeling/src/predict_autogluon.py \
+python3 modeling/src/predict_autogluon.py \
   --input-path modeling/data/processed/transition_dataset.csv \
   --include-proba
 ```
@@ -92,6 +96,20 @@ python modeling/src/predict_autogluon.py \
 Salida por defecto:
 
 - `modeling/outputs/predictions.csv`
+
+## Flujo equivalente con notebooks de Jupyter
+
+Si prefieres trabajar por celdas, usa este orden:
+
+1. `modeling/notebooks/01_build_training_dataset.ipynb`
+2. `modeling/notebooks/02_train_autogluon.ipynb`
+3. `modeling/notebooks/03_predict_autogluon.ipynb`
+
+Cada notebook replica el flujo de los scripts:
+
+- **01**: une CSV y crea `transition_dataset.csv`
+- **02**: entrena AutoGluon y exporta métricas/leaderboard
+- **03**: carga el modelo y genera predicciones (con probabilidades opcionales)
 
 ## 5) Siguientes mejoras recomendadas
 
