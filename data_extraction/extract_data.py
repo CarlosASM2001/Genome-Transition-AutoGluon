@@ -394,8 +394,8 @@ def run(args: argparse.Namespace) -> int:
     output_dir: Path = args.output_dir
     input_files = resolve_input_files(input_dir, args.input_file)
     flank_size: int = args.flank_size
-    negatives_per_positive: int = args.negatives_per_positive
-    rng = random.Random(args.random_seed)
+    negatives_per_positive: int = getattr(args, "negatives_per_positive", 1)
+    rng = random.Random(getattr(args, "random_seed", 42))
 
     if not input_files:
         print(f"No input files found in: {input_dir}", file=sys.stderr)
