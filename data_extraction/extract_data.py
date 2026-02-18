@@ -105,7 +105,7 @@ def open_csv_output(output_path: Path, local_position_column: str, window_len: i
     handle=output_path.open("w", newline="", encoding="utf-8")
     writer = csv.writer(handle)
     header =(["gene_id", "chromosome", "global_position", local_position_column]+
-                     [f"B{i}" for i in range(1,window_len+1)])
+                     [f"B{i}" for i in range(1,window_len+1)]+["label"])
 
     writer.writerow(header)
     return CsvOutput(file_handle=handle, writer=writer, expected_window_len=window_len) 
@@ -121,7 +121,8 @@ def write_csv_row(output: CsvOutput, gene: GeneRecord, local_position: int, sequ
         gene.chromosome,
         local_to_global(gene, local_position),
         local_position,
-        *sequence
+        *sequence,
+        gene.reverse_strand
     ])
     return True
 
