@@ -2,6 +2,7 @@ import re
 import csv
 import sys
 import argparse
+import random
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterator
@@ -23,6 +24,57 @@ class CsvOutput:
     file_handle: object
     writer: csv.writer
     expected_window_len: int
+
+
+@dataclass(frozen=True)
+class TransitionSpec:
+    key: str
+    local_position_column: str
+    window_start_offset: int
+    window_end_offset: int
+    window_len: int
+    min_distance_from_positive: int
+    shift_candidates: tuple[int, ...]
+
+
+TRANSITION_SPECS: dict[str, TransitionSpec] = {
+    "ei": TransitionSpec(
+        key="ei",
+        local_position_column="Intron_Start",
+        window_start_offset=-5,
+        window_end_offset=6,
+        window_len=12,
+        min_distance_from_positive=8,
+        shift_candidates=(-120, -100, -80, -60, -40, -30, -20, 20, 30, 40, 60, 80, 100, 120),
+    ),
+    "ie": TransitionSpec(
+        key="ie",
+        local_position_column="Exon_Start",
+        window_start_offset=-100,
+        window_end_offset=4,
+        window_len=105,
+        min_distance_from_positive=15,
+        shift_candidates=(-400, -350, -300, -250, -200, -150, -120, 120, 150, 200, 250, 300, 350, 400),
+    ),
+    "ze": TransitionSpec(
+        key="ze",
+        local_position_column="First_Exon_Start",
+        window_start_offset=-500,
+        window_end_offset=49,
+        window_len=550,
+        min_distance_from_positive=120,
+        shift_candidates=(-2000, -1800, -1600, -1400, -1200, -1000, -800, 800, 1000, 1200, 1400, 1600, 1800, 2000),
+    ),
+    "ez": TransitionSpec(
+        key="ez",
+        local_position_column="Last_Exon_End",
+        window_start_offset=-49,
+        window_end_offset=500,
+        window_len=550,
+        min_distance_from_positive=120,
+        shift_candidates=(-2000, -1800, -1600, -1400, -1200, -1000, -800, 800, 1000, 1200, 1400, 1600, 1800, 2000),
+    ),
+}
 
 
 
@@ -111,7 +163,7 @@ def open_csv_output(output_path: Path, local_position_column: str, window_len: i
     return CsvOutput(file_handle=handle, writer=writer, expected_window_len=window_len) 
 
 
-def write_csv_row(output: CsvOutput, gene: GeneRecord, local_position: int, sequence: str) -> bool:
+def write_csv_row(output: CsvOutput, gene: GeneRecord, local_position: int, sequence: str, label: bool) -> bool:
 
     if len(sequence) != output.expected_window_len:
         return False
@@ -122,46 +174,155 @@ def write_csv_row(output: CsvOutput, gene: GeneRecord, local_position: int, sequ
         local_to_global(gene, local_position),
         local_position,
         *sequence,
-        gene.reverse_strand
+        label
     ])
     return True
 
 
-def process_gene(gene: GeneRecord, output: CsvOutput, flank_size: int) -> None:
-    
+def is_far_from_positions(position: int, positions: list[int], min_distance: int) -> bool:
+    return all(abs(position - existing_position) > min_distance for existing_position in positions)
+
+
+def sample_negative_example(
+    gene: GeneRecord,
+    spec: TransitionSpec,
+    anchor_position: int,
+    true_positions: list[int],
+    used_positions: set[int],
+    flank_size: int,
+    rng: random.Random,
+) -> tuple[int, str] | None:
+    shifted_candidates = list(spec.shift_candidates)
+    rng.shuffle(shifted_candidates)
+
+    for shift in shifted_candidates:
+        candidate_position = anchor_position + shift
+        if candidate_position in used_positions:
+            continue
+        if not is_far_from_positions(candidate_position, true_positions, spec.min_distance_from_positive):
+            continue
+
+        candidate_sequence = extract_window(
+            gene,
+            candidate_position + spec.window_start_offset,
+            candidate_position + spec.window_end_offset,
+            flank_size,
+        )
+        if candidate_sequence and len(candidate_sequence) == spec.window_len:
+            return candidate_position, candidate_sequence
+
+    min_candidate = gene.local_start - flank_size - spec.window_start_offset
+    max_candidate = gene.local_end + flank_size - spec.window_end_offset
+    if min_candidate > max_candidate:
+        return None
+
+    for _ in range(200):
+        candidate_position = rng.randint(min_candidate, max_candidate)
+        if candidate_position in used_positions:
+            continue
+        if not is_far_from_positions(candidate_position, true_positions, spec.min_distance_from_positive):
+            continue
+
+        candidate_sequence = extract_window(
+            gene,
+            candidate_position + spec.window_start_offset,
+            candidate_position + spec.window_end_offset,
+            flank_size,
+        )
+        if candidate_sequence and len(candidate_sequence) == spec.window_len:
+            return candidate_position, candidate_sequence
+
+    return None
+
+
+def process_gene(
+    gene: GeneRecord,
+    outputs: dict[str, CsvOutput],
+    flank_size: int,
+    negatives_per_positive: int,
+    rng: random.Random,
+) -> None:
+    positive_positions: dict[str, list[int]] = {key: [] for key in TRANSITION_SPECS}
 
     for transcript_exons in gene.transcripts:
-
         ordered_exons = sorted(transcript_exons, key=lambda exon: exon[0])
+        if not ordered_exons:
+            continue
 
+        ze_spec = TRANSITION_SPECS["ze"]
         first_exon_start = ordered_exons[0][0]
-        ze_sequence = extract_window(gene,first_exon_start - 500, first_exon_start + 49, flank_size)
+        ze_sequence = extract_window(
+            gene,
+            first_exon_start + ze_spec.window_start_offset,
+            first_exon_start + ze_spec.window_end_offset,
+            flank_size,
+        )
+        if ze_sequence and write_csv_row(outputs["ze"], gene, first_exon_start, ze_sequence, True):
+            positive_positions["ze"].append(first_exon_start)
 
-
-        if ze_sequence:
-            write_csv_row(output["ze"], gene, first_exon_start, ze_sequence)
-
-
+        ez_spec = TRANSITION_SPECS["ez"]
         last_exon_end = ordered_exons[-1][1]
-        ez_sequence = extract_window(gene, last_exon_end - 49, last_exon_end + 500, flank_size)
-        if ez_sequence:
-            write_csv_row(output["ez"], gene, last_exon_end, ez_sequence)
+        ez_sequence = extract_window(
+            gene,
+            last_exon_end + ez_spec.window_start_offset,
+            last_exon_end + ez_spec.window_end_offset,
+            flank_size,
+        )
+        if ez_sequence and write_csv_row(outputs["ez"], gene, last_exon_end, ez_sequence, True):
+            positive_positions["ez"].append(last_exon_end)
 
-         
+        ei_spec = TRANSITION_SPECS["ei"]
+        ie_spec = TRANSITION_SPECS["ie"]
         for exon_left, exon_right in zip(ordered_exons, ordered_exons[1:]):
-            
             exon_end = exon_left[1]
-            intron_start = exon_end+1
-            ei_sequence = extract_window(gene, intron_start - 5, intron_start + 6, flank_size)
-
-            if ei_sequence:
-                write_csv_row(output["ei"], gene, intron_start, ei_sequence)
+            intron_start = exon_end + 1
+            ei_sequence = extract_window(
+                gene,
+                intron_start + ei_spec.window_start_offset,
+                intron_start + ei_spec.window_end_offset,
+                flank_size,
+            )
+            if ei_sequence and write_csv_row(outputs["ei"], gene, intron_start, ei_sequence, True):
+                positive_positions["ei"].append(intron_start)
 
             exon_start = exon_right[0]
-            ie_sequence = extract_window(gene, exon_start - 100, exon_start + 4, flank_size)
-            
-            if ie_sequence:
-                write_csv_row(output["ie"], gene, exon_start, ie_sequence)
+            ie_sequence = extract_window(
+                gene,
+                exon_start + ie_spec.window_start_offset,
+                exon_start + ie_spec.window_end_offset,
+                flank_size,
+            )
+            if ie_sequence and write_csv_row(outputs["ie"], gene, exon_start, ie_sequence, True):
+                positive_positions["ie"].append(exon_start)
+
+    if negatives_per_positive <= 0:
+        return
+
+    for transition_key, anchor_positions in positive_positions.items():
+        if not anchor_positions:
+            continue
+
+        spec = TRANSITION_SPECS[transition_key]
+        true_positions = sorted(set(anchor_positions))
+        used_positions = set(true_positions)
+
+        for anchor_position in anchor_positions:
+            for _ in range(negatives_per_positive):
+                negative_example = sample_negative_example(
+                    gene=gene,
+                    spec=spec,
+                    anchor_position=anchor_position,
+                    true_positions=true_positions,
+                    used_positions=used_positions,
+                    flank_size=flank_size,
+                    rng=rng,
+                )
+                if not negative_example:
+                    continue
+
+                negative_position, negative_sequence = negative_example
+                if write_csv_row(outputs[transition_key], gene, negative_position, negative_sequence, False):
+                    used_positions.add(negative_position)
 
 def resolve_input_files(input_dir: Path, explicit_files: list[str]) -> list[Path]:
     if explicit_files:
@@ -210,6 +371,21 @@ def parse_args() -> argparse.Namespace:
             f"(default: {DEFAULT_FLANK_SIZE})."
         ),
     )
+    parser.add_argument(
+        "--negatives-per-positive",
+        type=int,
+        default=1,
+        help=(
+            "Number of negative examples generated per positive transition "
+            "(default: %(default)s). Set to 0 to disable negatives."
+        ),
+    )
+    parser.add_argument(
+        "--random-seed",
+        type=int,
+        default=42,
+        help="Seed for reproducible negative sampling (default: %(default)s).",
+    )
     return parser.parse_args()
 
 
@@ -218,6 +394,8 @@ def run(args: argparse.Namespace) -> int:
     output_dir: Path = args.output_dir
     input_files = resolve_input_files(input_dir, args.input_file)
     flank_size: int = args.flank_size
+    negatives_per_positive: int = args.negatives_per_positive
+    rng = random.Random(args.random_seed)
 
     if not input_files:
         print(f"No input files found in: {input_dir}", file=sys.stderr)
@@ -230,19 +408,25 @@ def run(args: argparse.Namespace) -> int:
             print(f"  - {item}", file=sys.stderr)
         return 1
 
+    if negatives_per_positive < 0:
+        print("--negatives-per-positive must be >= 0", file=sys.stderr)
+        return 1
+
     output_dir.mkdir(parents=True, exist_ok=True)
 
     outputs = {
-        "ei": open_csv_output(output_dir / "data_ei.csv", "Intron_Start", 12),
-        "ie": open_csv_output(output_dir / "data_ie.csv", "Exon_Start", 105),
-        "ze": open_csv_output(output_dir / "data_ze.csv", "First_Exon_Start", 550),
-        "ez": open_csv_output(output_dir / "data_ez.csv", "Last_Exon_End", 550),
+        spec.key: open_csv_output(
+            output_dir / f"data_{spec.key}.csv",
+            spec.local_position_column,
+            spec.window_len,
+        )
+        for spec in TRANSITION_SPECS.values()
     }
 
     try:
         for input_file in input_files:
             for gene in iter_gene_records(input_file):
-                process_gene(gene, outputs, flank_size)
+                process_gene(gene, outputs, flank_size, negatives_per_positive, rng)
     finally:
         for output in outputs.values():
             output.file_handle.close()
