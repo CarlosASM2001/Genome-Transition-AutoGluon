@@ -7,6 +7,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterator
 
+from transitions import TransitionExtractor, build_transition_extractors
+from transitions.base import TransitionSpec
+
 @dataclass
 class GeneRecord:
     gene_id: str
@@ -24,58 +27,6 @@ class CsvOutput:
     file_handle: object
     writer: csv.writer
     expected_window_len: int
-
-
-@dataclass(frozen=True)
-class TransitionSpec:
-    key: str
-    local_position_column: str
-    window_start_offset: int
-    window_end_offset: int
-    window_len: int
-    min_distance_from_positive: int
-    shift_candidates: tuple[int, ...]
-
-
-TRANSITION_SPECS: dict[str, TransitionSpec] = {
-    "ei": TransitionSpec(
-        key="ei",
-        local_position_column="Intron_Start",
-        window_start_offset=-5,
-        window_end_offset=6,
-        window_len=12,
-        min_distance_from_positive=8,
-        shift_candidates=(-120, -100, -80, -60, -40, -30, -20, 20, 30, 40, 60, 80, 100, 120),
-    ),
-    "ie": TransitionSpec(
-        key="ie",
-        local_position_column="Exon_Start",
-        window_start_offset=-100,
-        window_end_offset=4,
-        window_len=105,
-        min_distance_from_positive=15,
-        shift_candidates=(-400, -350, -300, -250, -200, -150, -120, 120, 150, 200, 250, 300, 350, 400),
-    ),
-    "ze": TransitionSpec(
-        key="ze",
-        local_position_column="First_Exon_Start",
-        window_start_offset=-500,
-        window_end_offset=49,
-        window_len=550,
-        min_distance_from_positive=120,
-        shift_candidates=(-2000, -1800, -1600, -1400, -1200, -1000, -800, 800, 1000, 1200, 1400, 1600, 1800, 2000),
-    ),
-    "ez": TransitionSpec(
-        key="ez",
-        local_position_column="Last_Exon_End",
-        window_start_offset=-49,
-        window_end_offset=500,
-        window_len=550,
-        min_distance_from_positive=120,
-        shift_candidates=(-2000, -1800, -1600, -1400, -1200, -1000, -800, 800, 1000, 1200, 1400, 1600, 1800, 2000),
-    ),
-}
-
 
 
 GENE_LINE_REGEX = re.compile(r"^\(\[([^\]]+)\],\[(\d+)\],\[(\d+)\],\[([A-Za-z]+)\],\[([^\]]+)\],\[(\d+)\],\[(\d+)\],(true|false)\)$")
@@ -238,62 +189,29 @@ def sample_negative_example(
 def process_gene(
     gene: GeneRecord,
     outputs: dict[str, CsvOutput],
+    transition_extractors: dict[str, TransitionExtractor],
     flank_size: int,
     negatives_per_positive: int,
     rng: random.Random,
 ) -> None:
-    positive_positions: dict[str, list[int]] = {key: [] for key in TRANSITION_SPECS}
+    positive_positions: dict[str, list[int]] = {key: [] for key in transition_extractors}
 
     for transcript_exons in gene.transcripts:
         ordered_exons = sorted(transcript_exons, key=lambda exon: exon[0])
         if not ordered_exons:
             continue
 
-        ze_spec = TRANSITION_SPECS["ze"]
-        first_exon_start = ordered_exons[0][0]
-        ze_sequence = extract_window(
-            gene,
-            first_exon_start + ze_spec.window_start_offset,
-            first_exon_start + ze_spec.window_end_offset,
-            flank_size,
-        )
-        if ze_sequence and write_csv_row(outputs["ze"], gene, first_exon_start, ze_sequence, True):
-            positive_positions["ze"].append(first_exon_start)
-
-        ez_spec = TRANSITION_SPECS["ez"]
-        last_exon_end = ordered_exons[-1][1]
-        ez_sequence = extract_window(
-            gene,
-            last_exon_end + ez_spec.window_start_offset,
-            last_exon_end + ez_spec.window_end_offset,
-            flank_size,
-        )
-        if ez_sequence and write_csv_row(outputs["ez"], gene, last_exon_end, ez_sequence, True):
-            positive_positions["ez"].append(last_exon_end)
-
-        ei_spec = TRANSITION_SPECS["ei"]
-        ie_spec = TRANSITION_SPECS["ie"]
-        for exon_left, exon_right in zip(ordered_exons, ordered_exons[1:]):
-            exon_end = exon_left[1]
-            intron_start = exon_end + 1
-            ei_sequence = extract_window(
-                gene,
-                intron_start + ei_spec.window_start_offset,
-                intron_start + ei_spec.window_end_offset,
-                flank_size,
-            )
-            if ei_sequence and write_csv_row(outputs["ei"], gene, intron_start, ei_sequence, True):
-                positive_positions["ei"].append(intron_start)
-
-            exon_start = exon_right[0]
-            ie_sequence = extract_window(
-                gene,
-                exon_start + ie_spec.window_start_offset,
-                exon_start + ie_spec.window_end_offset,
-                flank_size,
-            )
-            if ie_sequence and write_csv_row(outputs["ie"], gene, exon_start, ie_sequence, True):
-                positive_positions["ie"].append(exon_start)
+        for transition_key, extractor in transition_extractors.items():
+            spec = extractor.spec
+            for anchor_position in extractor.iter_anchor_positions(ordered_exons):
+                positive_sequence = extract_window(
+                    gene,
+                    anchor_position + spec.window_start_offset,
+                    anchor_position + spec.window_end_offset,
+                    flank_size,
+                )
+                if positive_sequence and write_csv_row(outputs[transition_key], gene, anchor_position, positive_sequence, True):
+                    positive_positions[transition_key].append(anchor_position)
 
     if negatives_per_positive <= 0:
         return
@@ -302,7 +220,7 @@ def process_gene(
         if not anchor_positions:
             continue
 
-        spec = TRANSITION_SPECS[transition_key]
+        spec = transition_extractors[transition_key].spec
         true_positions = sorted(set(anchor_positions))
         used_positions = set(true_positions)
 
@@ -412,21 +330,23 @@ def run(args: argparse.Namespace) -> int:
         print("--negatives-per-positive must be >= 0", file=sys.stderr)
         return 1
 
+    transition_extractors = build_transition_extractors()
+
     output_dir.mkdir(parents=True, exist_ok=True)
 
     outputs = {
-        spec.key: open_csv_output(
-            output_dir / f"data_{spec.key}.csv",
-            spec.local_position_column,
-            spec.window_len,
+        key: open_csv_output(
+            output_dir / f"data_{key}.csv",
+            extractor.spec.local_position_column,
+            extractor.spec.window_len,
         )
-        for spec in TRANSITION_SPECS.values()
+        for key, extractor in transition_extractors.items()
     }
 
     try:
         for input_file in input_files:
             for gene in iter_gene_records(input_file):
-                process_gene(gene, outputs, flank_size, negatives_per_positive, rng)
+                process_gene(gene, outputs, transition_extractors, flank_size, negatives_per_positive, rng)
     finally:
         for output in outputs.values():
             output.file_handle.close()
