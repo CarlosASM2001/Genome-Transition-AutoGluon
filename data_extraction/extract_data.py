@@ -263,7 +263,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=project_root / "data_assembled",
+        default=project_root / "data",
         help="Directory where output CSV files will be written (default: %(default)s)",
     )
     parser.add_argument(
