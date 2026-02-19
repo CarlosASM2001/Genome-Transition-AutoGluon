@@ -89,7 +89,7 @@
     "cycler": "0.12.1",
     "gdown": "5.2.1",
     "fastlite": "0.2.3",
-    "platformdirs": "4.5.1",
+    "platformdirs": "4.4.0",
     "triad": "1.0.1",
     "exceptiongroup": "1.3.1",
     "python-dateutil": "2.9.0.post0",
@@ -226,7 +226,7 @@
     "pycosat": "0.6.6",
     "opencensus-context": "0.1.3",
     "google-auth": "2.48.0",
-    "importlib_metadata": "8.7.0",
+    "importlib_metadata": "8.7.1",
     "prompt_toolkit": "3.0.52",
     "autogluon.features": "1.5.0",
     "jedi": "0.19.2",
@@ -294,7 +294,7 @@
     "torchvision-extra-decoders": "0.0.2",
     "wasabi": "1.1.3",
     "wrapt": "2.1.1",
-    "packaging": "25.0",
+    "packaging": "26.0",
     "pybind11": "2.13.6",
     "gmpy2": "2.2.1",
     "spacy-loggers": "1.0.5",
@@ -320,6 +320,12 @@
     "fastapi": "0.128.7",
     "pyjwt": "2.11.0",
     "dnspython": "2.8.0",
-    "lightgbm": "4.6.0"
+    "lightgbm": "4.6.0",
+    "more-itertools": "10.8.0",
+    "jaraco.functools": "4.4.0",
+    "jaraco.text": "4.0.0",
+    "backports.tarfile": "1.2.0",
+    "jaraco.context": "6.1.0",
+    "autocommand": "2.2.2"
   }
 }
