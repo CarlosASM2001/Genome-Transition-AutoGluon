@@ -1,0 +1,39 @@
+{
+  "created_at_utc": "2026-02-23T14:39:13.103492+00:00",
+  "source_metrics": "training/reports/baseline_metrics.csv",
+  "metric_priority": "f1",
+  "models": {
+    "EI": {
+      "path": "training/models/autogluon_ei",
+      "f1": 0.9839781164517388,
+      "precision": 0.9952569169960476,
+      "recall": 0.972952086553323,
+      "roc_auc": 0.9980722841686906,
+      "timestamp": "2026-02-23T10:23:06"
+    },
+    "EZ": {
+      "path": "training/models/autogluon_ez",
+      "f1": 0.580046403712297,
+      "precision": 0.415973377703827,
+      "recall": 0.9578544061302682,
+      "roc_auc": 0.5571093546425779,
+      "timestamp": "2026-02-23T09:35:42"
+    },
+    "IE": {
+      "path": "training/models/autogluon_ie",
+      "f1": 0.9745795854517012,
+      "precision": 0.9865399841646872,
+      "recall": 0.9629057187017002,
+      "roc_auc": 0.9975451258555972,
+      "timestamp": "2026-02-23T08:48:46"
+    },
+    "ZE": {
+      "path": "training/models/autogluon_ze",
+      "f1": 0.6099071207430341,
+      "precision": 0.5116883116883116,
+      "recall": 0.7547892720306514,
+      "roc_auc": 0.7121514809345957,
+      "timestamp": "2026-02-23T09:03:23"
+    }
+  }
+}
