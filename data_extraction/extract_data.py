@@ -7,8 +7,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterator
 
-from classes import TransitionExtractor, build_transition_extractors
-from classes.base import TransitionSpec
+try:
+    from .classes import TransitionExtractor, build_transition_extractors
+    from .classes.base import TransitionSpec
+except ImportError:
+    from classes import TransitionExtractor, build_transition_extractors
+    from classes.base import TransitionSpec
 
 @dataclass
 class GeneRecord:

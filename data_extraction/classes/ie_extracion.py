@@ -1,6 +1,6 @@
 from typing import Iterable
 
-from base import TranscriptExons, TransitionExtractor, TransitionSpec
+from .base import TranscriptExons, TransitionExtractor, TransitionSpec
 
 
 class IeTransitionExtractor(TransitionExtractor):
