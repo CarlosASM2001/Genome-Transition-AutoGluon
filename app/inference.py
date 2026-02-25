@@ -16,13 +16,13 @@ TRANSITION_WINDOW_SIZES: Dict[str, int] = {
 class TransitionInferenceService:
 
 
-    def __init__(self, registry_path:Path | None = None , chunk_size: int = 2048):
+    def __init__(self, registry_path:Path | None = None , chunck_size: int = 2048):
 
         self.project_root = Path().resolve()
         self.registry_path =  self.project_root / "training/reports/model_registry.json"
-        self.chunck_size = chunk_size
+        self.chunck_size = chunck_size
         self.registry_json = self.load_json()
-        self.predictor_cache = Dict[str,TabularPredictor] = {}
+        self.predictor_cache : Dict[str,TabularPredictor] = {}
         
     
     def load_json(self) -> dict:
@@ -54,7 +54,7 @@ class TransitionInferenceService:
         model_path = self.resolve_model_path(model_path_value)
 
         predictor = TabularPredictor.load(str(model_path))
-        self.predictor_cache = predictor
+        self.predictor_cache[transition] = predictor
 
         return predictor
     
@@ -89,8 +89,8 @@ class TransitionInferenceService:
         if total_windows <= 0:
             return
 
-        for batch_start in range(0, total_windows, self.chunk_size):
-            batch_end = min(batch_start + self.chunk_size, total_windows)
+        for batch_start in range(0, total_windows, self.chunck_size):
+            batch_end = min(batch_start + self.chunck_size, total_windows)
             starts_1based = [i + 1 for i in range(batch_start, batch_end)]
             windows = [sequence[i : i + window_size] for i in range(batch_start, batch_end)]
             yield self._build_feature_frame(windows, window_size), starts_1based
@@ -113,7 +113,7 @@ class TransitionInferenceService:
             return result
 
         predictor = self.load_predictor(transition)
-        heap = List[Tuple[float,int]]
+        heap: List[Tuple[float,int]] = []
 
 
         for feature_batch, starts_based in self._iter_window_batches(sequence,window_size):
