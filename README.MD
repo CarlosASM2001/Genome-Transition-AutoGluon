@@ -76,6 +76,7 @@ As a final product, the project exposes a FastAPI endpoint that returns the prob
 │   ├── inference.py               # TransitionInferenceService (sliding-window prediction)
 │   └── schemas.py                 # Pydantic request/response models
 │
+├── bio-env.txt                    # Requirements enviroment
 ├── LICENSE                        # MIT License
 └── README.MD                      # This file
 ```
