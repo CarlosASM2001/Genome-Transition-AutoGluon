@@ -62,10 +62,12 @@ A transition zone marks the boundary where one functional region of DNA ends and
 │       ├── model_selection.py             # Builds model_registry.json from metrics
 │       └── generate_confusion_matrices.py # Generates confusion matrices (headless)
 │
-├── app/                           # FastAPI inference API
-│   ├── main.py                    # Endpoints: /, /health, /predict
+├── app/                           # FastAPI inference API + web UI
+│   ├── main.py                    # Endpoints: /, /api, /health, /predict
 │   ├── inference.py               # TransitionInferenceService (sliding-window prediction)
-│   └── schemas.py                 # Pydantic request/response models
+│   ├── schemas.py                 # Pydantic request/response models
+│   └── static/
+│       └── index.html             # Web interface (single-page, no build step)
 │
 ├── LICENSE                        # MIT License
 └── README.MD                      # This file
@@ -146,7 +148,7 @@ This produces `training/reports/confusion_matrices.png` and `training/reports/co
 
 EI and IE models achieve high accuracy with very few errors. ZE and EZ models have lower precision due to the smaller training set and the larger, more complex nucleotide window (550 nt).
 
-## API
+## API & Web Interface
 
 ### Requirements
 
@@ -160,13 +162,20 @@ pip install fastapi uvicorn autogluon.tabular pandas
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-The interactive docs are available at `http://localhost:8000/docs`.
+Open `http://localhost:8000` in a browser to use the **web interface**, or `http://localhost:8000/docs` for the Swagger interactive docs.
+
+The web UI allows you to:
+- Paste or load a sample nucleotide sequence
+- Configure **Top K** (number of hits per zone) and **Min Probability** threshold
+- View results as cards for each transition zone with probability bars
+- See the sequence with **color-highlighted** regions where transitions were detected
 
 ### Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/` | API info and configured transitions |
+| `GET` | `/` | Web interface |
+| `GET` | `/api` | API info and configured transitions (JSON) |
 | `GET` | `/health` | Model status and resolved paths |
 | `POST` | `/predict` | Predict transition zones in a nucleotide sequence |
 
