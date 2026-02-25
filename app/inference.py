@@ -16,16 +16,14 @@ TRANSITION_WINDOW_SIZES: Dict[str, int] = {
 class TransitionInferenceService:
 
 
-    def __init__(self, registry_path:Path, chunk_size: int = 2048):
+    def __init__(self, registry_path:Path | None = None , chunk_size: int = 2048):
 
         self.project_root = Path().resolve()
         self.registry_path =  self.project_root / "training/reports/model_registry.json"
-
+        self.chunck_size = chunk_size
         self.registry_json = self.load_json()
-        self.predictor_cache = Dict
-
-        self.chunck_size = self.chunck_size
-
+        self.predictor_cache = Dict[str,TabularPredictor] = {}
+        
     
     def load_json(self) -> dict:
 
@@ -139,7 +137,7 @@ class TransitionInferenceService:
         hits = [
             {
                 "start_index_based": start_idx,
-                "end_index_1based": start_idx + window_size - 1,
+                "end_index_based": start_idx + window_size - 1,
                 "probability": score,
             }
             for score, start_idx in top_items
@@ -168,12 +166,12 @@ class TransitionInferenceService:
         }
 
     def health_status(self) -> dict:
-        configured_models = self._registry.get("models", {})
+        configured_models = self.registry_json.get("models", {})
         resolved_paths = {}
         missing_paths = []
         for transition, cfg in configured_models.items():
             raw_path = cfg.get("path", "")
-            resolved = self._resolve_model_path(raw_path)
+            resolved = self.resolve_model_path(raw_path)
             resolved_paths[transition] = str(resolved)
             if not resolved.exists():
                 missing_paths.append(transition)

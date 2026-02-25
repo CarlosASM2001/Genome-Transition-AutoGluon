@@ -50,7 +50,6 @@ def health() -> dict:
 
 
 @app.post("/predict", response_model=PredictResponse)
-
 def predict(payload: PredictRequest) -> PredictResponse:
     try: 
         service = get_service()
