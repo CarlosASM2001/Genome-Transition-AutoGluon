@@ -74,7 +74,9 @@ As a final product, the project exposes a FastAPI endpoint that returns the prob
 ├── app/                           # FastAPI inference API
 │   ├── main.py                    # Endpoints: /, /health, /predict
 │   ├── inference.py               # TransitionInferenceService (sliding-window prediction)
-│   └── schemas.py                 # Pydantic request/response models
+│   ├── schemas.py                 # Pydantic request/response models
+│   └── static/
+│       └── index.html             # Web Interface 
 │
 ├── bio-env.txt                    # Requirements enviroment
 ├── LICENSE                        # MIT License
@@ -166,13 +168,20 @@ pip install fastapi uvicorn autogluon.tabular pandas
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-The interactive docs are available at `http://localhost:8000/docs`.
+Open `http://localhost:8000` in a browser to use the **web interface**, or `http://localhost:8000/docs` for the Swagger interactive docs.
+
+The web UI allows you to:
+- Paste or load a sample nucleotide sequence
+- Configure **Top K** (number of hits per zone) and **Min Probability** threshold
+- View results as cards for each transition zone with probability bars
+- See the sequence with **color-highlighted** regions where transitions were detected
 
 ### Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/` | API info and configured transitions |
+| `GET` | `/` | Web interface |
+| `GET` | `/api` | API info and configured transitions (JSON) |
 | `GET` | `/health` | Model status and resolved paths |
 | `POST` | `/predict` | Predict transition zones in a nucleotide sequence |
 

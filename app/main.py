@@ -1,7 +1,11 @@
+from pathlib import Path
+from fastapi.responses import FileResponse
+
 from fastapi import FastAPI, HTTPException
 from app.inference import TransitionInferenceService, TRANSITION_WINDOW_SIZES
 from app.schemas import PredictRequest, PredictResponse
 
+STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 app = FastAPI(
     title="Genome Transition Predictor API",
@@ -28,13 +32,22 @@ def get_service() -> TransitionInferenceService:
 
 
 @app.get("/")
-def root() -> dict:
-    return {
+def root():
+    return FileResponse(STATIC_DIR / "index.html")
+
+@app.get("/api")
+def get_info() -> dict:
+    return{
         "message" : "Genome Transition Predictor API",
+        "message": "Genome Transition Predictor API",
         "transitions": list(TRANSITION_WINDOW_SIZES),
         "windows_size":TRANSITION_WINDOW_SIZES,
-        "docs": "/docs"
+        "docs": "/docs",
+        "ui": "/",
     }
+
+
+
 
 @app.get("/health")
 def health() -> dict:
