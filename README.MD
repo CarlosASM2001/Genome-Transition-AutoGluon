@@ -69,7 +69,7 @@ As a final product, the project exposes a FastAPI endpoint that returns the prob
 │   └── src/
 │       ├── print_baseline_metrics.py      # Saves evaluation metrics to CSV
 │       ├── model_selection.py             # Builds model_registry.json from metrics
-│       └── generate_confusion_matrices.py # Generates confusion matrices (headless)
+│ 
 │
 ├── app/                           # FastAPI inference API
 │   ├── main.py                    # Endpoints: /, /health, /predict

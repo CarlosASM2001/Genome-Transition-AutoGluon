@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": [
+        "./data_extraction/classes",
+        "./app"
+    ]
+}
