@@ -1,0 +1,2 @@
+32:c,c,c,c,c,t,c,a,t,t,I-
+Positivos Encontrados: []
