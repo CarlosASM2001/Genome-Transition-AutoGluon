@@ -1,5 +1,6 @@
 import gene.information.Analizer;
 import gene.information.GeneConstructor;
+import clasificador.AutoMLClasificador;
 import util.MiddleWare;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,8 +20,10 @@ public class TestIntegracionAutoML {
         System.out.println("  TEST DE INTEGRACIÓN AUTOML");
         System.out.println("════════════════════════════════════════════════════════════════\n");
 
+        AutoMLClasificador clasificador = new AutoMLClasificador();
+
         System.out.println("Secuencia: " + secuencia.length() + " nucleotidos");
-        System.out.println("API: http://143.198.77.77:8000/predict\n");
+        System.out.println("API: " + clasificador.getApiUrl() + "/predict\n");
 
         try {
             // Preparar datos simulados
