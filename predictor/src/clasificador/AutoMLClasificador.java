@@ -19,6 +19,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -32,11 +33,51 @@ import org.json.JSONObject;
  */
 public class AutoMLClasificador {
 
+    private static final String DEFAULT_API_URL = "http://127.0.0.1:8000";
     private String apiUrl;
 
 
     public AutoMLClasificador() {
-        this.apiUrl = "http://143.198.77.77:8000";
+        this.apiUrl = resolveApiUrl();
+    }
+
+    public AutoMLClasificador(String apiUrl) {
+        this.apiUrl = sanitizeApiUrl(apiUrl);
+    }
+
+    /**
+     * Resuelve la URL base del servicio desde:
+     * 1) propiedad JVM: -Dautoml.api.url
+     * 2) variable de entorno: AUTOML_API_URL
+     * 3) valor por defecto local
+     */
+    private String resolveApiUrl() {
+        String fromSystemProperty = System.getProperty("automl.api.url");
+        if (fromSystemProperty != null && !fromSystemProperty.trim().isEmpty()) {
+            return sanitizeApiUrl(fromSystemProperty);
+        }
+
+        String fromEnv = System.getenv("AUTOML_API_URL");
+        if (fromEnv != null && !fromEnv.trim().isEmpty()) {
+            return sanitizeApiUrl(fromEnv);
+        }
+
+        return DEFAULT_API_URL;
+    }
+
+    private String sanitizeApiUrl(String apiUrl) {
+        if (apiUrl == null || apiUrl.trim().isEmpty()) {
+            return DEFAULT_API_URL;
+        }
+        String cleaned = apiUrl.trim();
+        while (cleaned.endsWith("/")) {
+            cleaned = cleaned.substring(0, cleaned.length() - 1);
+        }
+        return cleaned;
+    }
+
+    public String getApiUrl() {
+        return apiUrl;
     }
 
     /**
@@ -93,6 +134,12 @@ public class AutoMLClasificador {
             try (OutputStream os = conn.getOutputStream()) {
                 byte[] input = jsonBody.getBytes(StandardCharsets.UTF_8);
                 os.write(input, 0, input.length);
+            } catch (ConnectException ce) {
+                throw new ConnectException(
+                    "No se pudo conectar a " + urlString + ". "
+                    + "Verifica que FastAPI esté activo y que la URL sea correcta "
+                    + "(propiedad -Dautoml.api.url o variable AUTOML_API_URL)."
+                );
             }
 
             // Leer la respuesta

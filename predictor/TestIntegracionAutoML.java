@@ -1,5 +1,6 @@
 import gene.information.Analizer;
 import gene.information.GeneConstructor;
+import clasificador.AutoMLClasificador;
 import util.MiddleWare;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,6 +11,18 @@ import java.util.List;
  */
 public class TestIntegracionAutoML {
 
+    private static List<String> buildGeneDataFromSequence(String secuencia) throws Exception {
+        List<String> data = new ArrayList<>();
+        for (int i = 0; i < secuencia.length(); i++) {
+            char base = Character.toLowerCase(secuencia.charAt(i));
+            if (base != 'a' && base != 'g' && base != 't' && base != 'c') {
+                throw new Exception("Secuencia inválida en índice " + i + ": '" + secuencia.charAt(i) + "'");
+            }
+            data.add(String.valueOf(base));
+        }
+        return data;
+    }
+
     public static void main(String[] args) {
 
         // Secuencia de prueba
@@ -19,14 +32,14 @@ public class TestIntegracionAutoML {
         System.out.println("  TEST DE INTEGRACIÓN AUTOML");
         System.out.println("════════════════════════════════════════════════════════════════\n");
 
+        AutoMLClasificador clasificador = new AutoMLClasificador();
+
         System.out.println("Secuencia: " + secuencia.length() + " nucleotidos");
-        System.out.println("API: http://143.198.77.77:8000/predict\n");
+        System.out.println("API: " + clasificador.getApiUrl() + "/predict\n");
 
         try {
-            // Preparar datos simulados
-            List<String> data = new ArrayList<>();
-            data.add("test_sequence");
-            data.add(secuencia);
+            // Preparar datos de entrada por nucleótido (formato esperado por GeneConstructor.initLists)
+            List<String> data = buildGeneDataFromSequence(secuencia);
 
             MiddleWare middleWare = new MiddleWare();
 
@@ -87,8 +100,8 @@ public class TestIntegracionAutoML {
             System.err.println("Error: " + e.getMessage());
             System.err.println("\nPosibles causas:");
             System.err.println("  1. FastAPI no está corriendo");
-            System.err.println("  2. Error de compilación");
-            System.err.println("  3. Problema de conexión");
+            System.err.println("  2. La secuencia/data no cumple formato esperado");
+            System.err.println("  3. Error de compilación o de clase");
             System.err.println("\nDetalles:");
             e.printStackTrace();
         }

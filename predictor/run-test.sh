@@ -32,7 +32,7 @@ CP_MAIN=".${CP_SEP}lib/*"
 CP_BIN=".${CP_SEP}lib/*${CP_SEP}bin"
 API_BASE_URL="${API_BASE_URL:-http://127.0.0.1:8000}"
 API_PROJECT_DIR="${API_PROJECT_DIR:-$(cd "$BASE_DIR/.." && pwd)}"
-API_START_CMD="${API_START_CMD:-uvicorn app.main:app --host 127.0.0.1 --port 8000}"
+API_START_CMD="${API_START_CMD:-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000}"
 API_PID=""
 
 health_check() {
@@ -71,10 +71,16 @@ else
         echo "   También puedes iniciarlo manualmente con:"
         echo "   cd \"$API_PROJECT_DIR\""
         echo "   $API_START_CMD"
-        echo ""
-        read -p "¿Deseas continuar de todas formas? (s/n): " -n 1 -r
-        echo ""
-        if [[ ! $REPLY =~ ^[Ss]$ ]]; then
+        if [ -t 0 ]; then
+            echo ""
+            read -p "¿Deseas continuar de todas formas? (s/n): " -n 1 -r
+            echo ""
+            if [[ ! $REPLY =~ ^[Ss]$ ]]; then
+                exit 1
+            fi
+        else
+            echo ""
+            echo -e "${RED}❌ Entorno no interactivo detectado; abortando sin prompt.${NC}"
             exit 1
         fi
     fi
