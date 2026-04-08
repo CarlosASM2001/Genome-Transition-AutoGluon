@@ -4,10 +4,11 @@ import util.MiddleWare;
 /**
  * Test simple para probar el clasificador AutoML.
  *
- * REQUISITO: El servicio FastAPI debe estar corriendo en http://143.198.77.77:8000
+ * REQUISITO: El servicio FastAPI debe estar corriendo en la URL configurada para AutoML.
+ * Por defecto se usa http://127.0.0.1:8000
  *
  * Para iniciar el servicio:
- *   python -m uvicorn main:app --reload
+ *   python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
  */
 public class TestAutoML {
 
@@ -20,16 +21,16 @@ public class TestAutoML {
         System.out.println("           TEST AUTOML - Predicción de sitios genómicos");
         System.out.println("================================================================\n");
 
+        AutoMLClasificador clasificador = new AutoMLClasificador();
+
         System.out.println("Secuencia: " + secuencia.length() + " nucleótidos");
-        System.out.println("API: http://127.0.0.1:8000/predict\n");
+        System.out.println("API: " + clasificador.getApiUrl() + "/predict\n");
 
         try {
             // FORMA 1: Usar directamente AutoMLClasificador
             System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             System.out.println("  FORMA 1: Uso directo de AutoMLClasificador");
             System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-
-            AutoMLClasificador clasificador = new AutoMLClasificador();
 
             System.out.println("Enviando request a FastAPI...");
             AutoMLClasificador.AutoMLResult resultado1 = clasificador.predict(secuencia);
@@ -75,12 +76,15 @@ public class TestAutoML {
             System.err.println("Error: " + e.getMessage());
             System.err.println("\nPosibles causas:");
             System.err.println("  1. El servicio FastAPI no está corriendo");
-            System.err.println("  2. El servicio no está en http://127.0.0.1:8000");
+            System.err.println("  2. El servicio no está en " + clasificador.getApiUrl());
             System.err.println("  3. Problema de conexión");
             System.err.println("\nSolución:");
             System.err.println("  Asegúrate de que el servicio esté corriendo:");
-            System.err.println("    cd /ruta/al/servicio/fastapi");
-            System.err.println("    python -m uvicorn main:app --reload");
+            System.err.println("    cd /ruta/al/proyecto");
+            System.err.println("    python -m uvicorn app.main:app --host 127.0.0.1 --port 8000");
+            System.err.println("\n  Si usas otra URL:");
+            System.err.println("    export AUTOML_API_URL=http://host:puerto");
+            System.err.println("    # o java -Dautoml.api.url=http://host:puerto ...");
             System.err.println("\nDetalles del error:");
             e.printStackTrace();
         }
