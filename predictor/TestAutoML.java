@@ -21,7 +21,7 @@ public class TestAutoML {
         System.out.println("================================================================\n");
 
         System.out.println("Secuencia: " + secuencia.length() + " nucleótidos");
-        System.out.println("API: http://143.198.77.77:8000/predict\n");
+        System.out.println("API: http://127.0.0.1:8000/predict\n");
 
         try {
             // FORMA 1: Usar directamente AutoMLClasificador

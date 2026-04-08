@@ -29,10 +29,10 @@ fi
 
 # Verificar si existe el servicio FastAPI
 echo -e "${YELLOW}⚠ Verificando servicio FastAPI...${NC}"
-if curl -s http://143.198.77.77:8000 > /dev/null 2>&1; then
+if curl -s http://127.0.0.1:8000 > /dev/null 2>&1; then
     echo -e "${GREEN}✓ Servicio FastAPI está corriendo${NC}"
 else
-    echo -e "${RED}❌ El servicio FastAPI NO está corriendo en http://143.198.77.77:8000${NC}"
+    echo -e "${RED}❌ El servicio FastAPI NO está corriendo en http://127.0.0.1:8000${NC}"
     echo ""
     echo "Por favor, inicia el servicio primero:"
     echo "  cd /ruta/al/servicio"
