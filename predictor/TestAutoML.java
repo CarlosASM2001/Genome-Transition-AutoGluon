@@ -75,7 +75,7 @@ public class TestAutoML {
             System.err.println("Error: " + e.getMessage());
             System.err.println("\nPosibles causas:");
             System.err.println("  1. El servicio FastAPI no está corriendo");
-            System.err.println("  2. El servicio no está en http://143.198.77.77:8000");
+            System.err.println("  2. El servicio no está en http://127.0.0.1:8000");
             System.err.println("  3. Problema de conexión");
             System.err.println("\nSolución:");
             System.err.println("  Asegúrate de que el servicio esté corriendo:");

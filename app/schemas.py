@@ -30,3 +30,23 @@ class TransitionPrediction(BaseModel):
 class PredictResponse(BaseModel):
     sequence_length: int
     transitions: Dict[str, TransitionPrediction]
+
+
+
+class PredictorLegacyResponse(BaseModel):
+    ei: List[int] = Field(
+        ...,
+        description="Posiciones start_index_based para transición Exon→Intron (EI).",
+    )
+    ie: List[int] = Field(
+        ...,
+        description="Posiciones start_index_based para transición Intron→Exon (IE).",
+    )
+    ze: List[int] = Field(
+        ...,
+        description="Posiciones start_index_based para transición Zona intergénica→Exón (ZE).",
+    )
+    ez: List[int] = Field(
+        ...,
+        description="Posiciones start_index_based para transición Exón→Zona intergénica (EZ).",
+    )

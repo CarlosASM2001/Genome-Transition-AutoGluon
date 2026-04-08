@@ -30,6 +30,14 @@ fi
 
 CP_MAIN=".${CP_SEP}lib/*"
 CP_BIN=".${CP_SEP}lib/*${CP_SEP}bin"
+API_BASE_URL="${API_BASE_URL:-http://127.0.0.1:8000}"
+API_PROJECT_DIR="${API_PROJECT_DIR:-$(cd "$BASE_DIR/.." && pwd)}"
+API_START_CMD="${API_START_CMD:-uvicorn app.main:app --host 127.0.0.1 --port 8000}"
+API_PID=""
+
+health_check() {
+    curl -fsS "${API_BASE_URL}/health" > /dev/null 2>&1
+}
 
 
 
@@ -42,21 +50,50 @@ fi
 
 # Verificar si existe el servicio FastAPI
 echo -e "${YELLOW}⚠ Verificando servicio FastAPI...${NC}"
-if curl -s http://127.0.0.1:8000 > /dev/null 2>&1; then
+if health_check; then
     echo -e "${GREEN}✓ Servicio FastAPI está corriendo${NC}"
 else
-    echo -e "${RED}❌ El servicio FastAPI NO está corriendo en http://127.0.0.1:8000${NC}"
-    echo ""
-    echo "Por favor, inicia el servicio primero:"
-    echo "  cd /ruta/al/servicio"
-    echo "  python -m uvicorn main:app --reload"
-    echo ""
-    read -p "¿Deseas continuar de todas formas? (s/n): " -n 1 -r
-    echo ""
-    if [[ ! $REPLY =~ ^[Ss]$ ]]; then
-        exit 1
+    echo -e "${YELLOW}⚠ Servicio FastAPI no detectado en ${API_BASE_URL}. Intentando iniciarlo automáticamente...${NC}"
+    (
+        cd "$API_PROJECT_DIR" && nohup bash -lc "$API_START_CMD" > /tmp/genome_transition_api.log 2>&1 &
+        echo $! > /tmp/genome_transition_api.pid
+    )
+    API_PID="$(cat /tmp/genome_transition_api.pid 2>/dev/null || true)"
+    sleep 5
+
+    if health_check; then
+        echo -e "${GREEN}✓ Servicio FastAPI iniciado automáticamente en ${API_BASE_URL}${NC}"
+        echo "   Logs: /tmp/genome_transition_api.log"
+    else
+        echo -e "${RED}❌ El servicio FastAPI NO está corriendo en ${API_BASE_URL}${NC}"
+        echo "   Intento de arranque falló. Revisa logs: /tmp/genome_transition_api.log"
+        echo ""
+        echo "   También puedes iniciarlo manualmente con:"
+        echo "   cd \"$API_PROJECT_DIR\""
+        echo "   $API_START_CMD"
+        echo ""
+        read -p "¿Deseas continuar de todas formas? (s/n): " -n 1 -r
+        echo ""
+        if [[ ! $REPLY =~ ^[Ss]$ ]]; then
+            exit 1
+        fi
     fi
 fi
+
+# Si el script inició FastAPI, detenerlo al finalizar.
+cleanup() {
+    if [ -n "$API_PID" ] && ps -p "$API_PID" > /dev/null 2>&1; then
+        kill "$API_PID" > /dev/null 2>&1 || true
+    fi
+}
+trap cleanup EXIT
+
+if ! health_check; then
+    echo ""
+    echo -e "${RED}❌ No hay conexión con FastAPI en ${API_BASE_URL}. Abortando tests.${NC}"
+    exit 1
+fi
+
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
